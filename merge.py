@@ -11,16 +11,19 @@ run the command "python merge.py".
 """
 
 # Import required libraries
+from time import sleep
+
 from PIL import Image
 import os, sys
-from scipy import misc
+import gc
 
 # Main function, responsible for manipulating data and calling
 # the other functions
 def main():
     # Load the image files from the directories "set1" and "set2"
-    set1_imgs = get_imgs('set1')
-    set2_imgs = get_imgs('set2')
+    set1_imgs = get_imgs('Frames')
+    set2_imgs = get_imgs('Images')
+    # print(set1_imgs)
 
     # Ask user to input the X coordinate of the Set2 images
     pos_x = get_position(
@@ -40,19 +43,31 @@ def main():
     # For every image in Set1, combine that image with all the
     # images from Set2.
     # Save all of these combined images to a list variable named "combined_imgs"
-    combined_imgs = [combine_imgs(set1_img, set2_img, (pos_x, pos_y)) 
-                    for set2_img in set2_imgs
-                    for set1_img in set1_imgs]
-    print('\n All combined.')
-    # Finally, save the combined images to the output directory
-    for count, img in enumerate(combined_imgs):
-        try:
-            img.save(f'output/{count}.png')
-        except FileNotFoundError:
-            print('\nOutput folder does not exist.')
-            print('\nCreating output folder...')
-            os.makedirs('output')
-            img.save(f'output/{count}.png')
+    # combined_imgs = [combine_imgs(set1_img, set2_img, (pos_x, pos_y))
+    #                 for set2_img in set2_imgs
+    #                 for set1_img in set1_imgs]
+
+    combined_imgs = []
+
+    CURRENT_DIR = os.path.dirname(__file__)
+    FRAMES_DIR = os.path.join(CURRENT_DIR, 'Frames')
+    IMAGES_DIR = os.path.join(CURRENT_DIR, 'Images')
+
+    for i, set1_img in enumerate(set1_imgs):
+        for k, set2_img in enumerate(set2_imgs):
+            final_image = combine_imgs(Image.open(os.path.join(FRAMES_DIR, set1_img)), Image.open(os.path.join(IMAGES_DIR, set2_img)), (pos_x, pos_y))
+            combined_imgs.append(final_image)
+            try:
+                final_image.save(f'Merge/{set1_imgs[k].split(".")[0]}_{"%02d" % i}.png')
+                final_image.close()
+                gc.collect()
+            except FileNotFoundError:
+                print('\nMerge folder does not exist.')
+                print('\nCreating Merge folder...')
+                os.makedirs('Merge')
+                final_image.save(f'Merge/{set1_imgs[k].split(".")[0]}_{"%02d" % i}.png')
+                final_image.close()
+                gc.collect()
 
 
 # Function responsible for combining any two image files
@@ -80,6 +95,7 @@ def combine_imgs(foreground, background, offset):
     # Merge the two images
     composite = Image.new('RGBA', (width, height))
     composite = Image.alpha_composite(composite, background)
+
     return Image.alpha_composite(composite, foreground)
 
 
@@ -93,8 +109,14 @@ def sized_up_RGBA_img(img, size, offset):
 
 # Function responsible for loading all the images file
 # contained inside a given directory
+
+
 def get_imgs(folder_name):
-    return [Image.open(f'{folder_name}/{img}') for img in os.listdir(folder_name) if not img.endswith('.db')]
+    images = []
+    for img in os.listdir(folder_name):
+        if not img.endswith('.db'):
+            images.append(img)
+    return images
 
 
 # Functionr responsible for prompting the user for a
